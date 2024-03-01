@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import './App.css'; 
 
 const App = () => {
   const [topBulletPlayers, setTopBulletPlayers] = useState([]);
   const [topBlitzPlayers, setTopBlitzPlayers] = useState([]);
   const [searchPlayer, setSearchPlayer] = useState('');
+  const [playerInfo, setPlayerInfo] = useState(null);
   const [playerGames, setPlayerGames] = useState([]);
   const [error, setError] = useState(null);
 
@@ -24,7 +26,7 @@ const App = () => {
 
     fetchTopPlayers();
 
-    const interval = setInterval(fetchTopPlayers, 60000); // Update every minute
+    const interval = setInterval(fetchTopPlayers, 60000); 
 
     return () => clearInterval(interval);
   }, []);
@@ -33,20 +35,34 @@ const App = () => {
     setSearchPlayer(event.target.value);
   };
 
-  const fetchPlayerGames = async () => {
+  const fetchPlayerInfo = async () => {
     try {
-      const response = await axios.get(`https://lichess.org/api/games/user/${searchPlayer}`);
-      setPlayerGames(response.data);
+      const response = await axios.get(`https://lichess.org/api/user/${searchPlayer}`);
+      setPlayerInfo(response.data);
       setError(null);
+      fetchLastGame(searchPlayer);
+    } catch (error) {
+      setError('Error fetching player information');
+    }
+  };
+
+  const fetchLastGame = async (username) => {
+    try {
+      const response = await axios.get(`https://lichess.org/api/games/user/${username}`, {
+        params: {
+          max: 1
+        }
+      });
+      setPlayerGames(response.data.games || []); 
     } catch (error) {
       setError('Error fetching player games data');
     }
   };
 
   return (
-    <div>
+    <div className="container">
       <h1>Top 10 Bullet Players</h1>
-      {error && <p>{error}</p>}
+      {error && <p className="error">{error}</p>}
       <ul>
         {topBulletPlayers.map(player => (
           <li key={player.id}>
@@ -64,18 +80,28 @@ const App = () => {
         ))}
       </ul>
       
-      <div>
+      <div className="search">
         <input 
           type="text" 
           placeholder="Search player by ID" 
           value={searchPlayer} 
           onChange={handleSearchChange} 
         />
-        <button onClick={fetchPlayerGames}>Search</button>
+        <button onClick={fetchPlayerInfo}>Search</button>
       </div>
       
-      <h2>Player Games</h2>
-      {playerGames.length > 0 ? (
+      {playerInfo && (
+        <div>
+          <h2>Player Information</h2>
+          <p>Username: {playerInfo.username}</p>
+          <p>Country: {playerInfo.profile?.country}</p>
+          <p>Title: {playerInfo.title}</p>
+          <p>Online: {playerInfo.online}</p>
+        </div>
+      )}
+
+      <h2>Last Game for Searched Player</h2>
+      {Array.isArray(playerGames) && playerGames.length > 0 ? (
         <ul>
           {playerGames.map(game => (
             <li key={game.id}>
